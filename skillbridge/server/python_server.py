@@ -34,10 +34,10 @@ def read_from_skill(timeout: Optional[float]) -> str:
     return 'failure <timeout>'
 
 
-def create_windows_server_class(single: bool) -> Type[BaseServer]:
+def create_tcp_server_class(single: bool) -> Type[BaseServer]:
     from socketserver import TCPServer
 
-    class SingleWindowsServer(TCPServer):
+    class SingleTcpServer(TCPServer):
         request_queue_size = 0
         allow_reuse_address = True
 
@@ -53,10 +53,10 @@ def create_windows_server_class(single: bool) -> Type[BaseServer]:
                 pass
             super().server_bind()
 
-    class ThreadingWindowsServer(ThreadingMixIn, SingleWindowsServer):
+    class ThreadingTcpServer(ThreadingMixIn, SingleTcpServer):
         pass
 
-    return SingleWindowsServer if single else ThreadingWindowsServer
+    return SingleTcpServer if single else ThreadingTcpServer
 
 
 def data_windows_ready(timeout: Optional[float]) -> bool:
@@ -92,9 +92,7 @@ def data_unix_ready(timeout: Optional[float]) -> bool:
 
 if platform == 'win32':
     data_ready = data_windows_ready
-    create_server_class = create_windows_server_class
 else:
-    create_server_class = create_unix_server_class
     data_ready = data_unix_ready
 
 
@@ -150,7 +148,10 @@ class Handler(StreamRequestHandler):
 def main(id: str, log_level: str, notify: bool, single: bool, timeout: Optional[float]) -> None:
     logger.setLevel(getattr(logging, log_level))
 
-    server_class = create_server_class(single)
+    if type(id) == int:
+        server_class = create_tcp_server_class(single)
+    else:
+        server_class = create_unix_server_class(single)
 
     with server_class(id, Handler) as server:
         server.skill_timeout: Optional[float] = timeout  # type: ignore
@@ -166,10 +167,7 @@ def main(id: str, log_level: str, notify: bool, single: bool, timeout: Optional[
 if __name__ == '__main__':
     log_levels = "DEBUG WARNING INFO ERROR CRITICAL FATAL".split()
     argument_parser = ArgumentParser(argv[0])
-    if platform == 'win32':
-        argument_parser.add_argument('id', type=int)
-    else:
-        argument_parser.add_argument('id')
+    argument_parser.add_argument('id')
     argument_parser.add_argument('log_level', choices=log_levels)
     argument_parser.add_argument('--notify', action='store_true')
     argument_parser.add_argument('--single', action='store_true')
@@ -177,8 +175,17 @@ if __name__ == '__main__':
 
     ns = argument_parser.parse_args()
 
+    # convert to integer, if the id consists of numbers only
+    try:
+        ns.id = int(ns.id)
+    except ValueError:
+        pass
+
     if platform == 'win32' and ns.timeout is not None:
         print("Timeout is not possible on Windows", file=stderr)
+        exit(1)
+    if platform == 'win32' and type(ns.id) is str:
+        print("UNIX Socket is not possible on Windows", file=stderr)
         exit(1)
 
     try:
