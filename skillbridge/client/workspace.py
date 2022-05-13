@@ -5,7 +5,7 @@ from textwrap import dedent
 
 from .globals import Globals
 from .hints import Function, Symbol
-from .channel import Channel, create_channel_class, DirectChannel
+from .channel import Channel, DirectChannel, TcpChannel
 from .functions import FunctionCollection, LiteralRemoteFunction
 from .objects import RemoteObject
 from .translator import camel_to_snake, snake_to_camel, Translator, DefaultTranslator
@@ -234,8 +234,7 @@ class Workspace:
         if workspace_id not in _open_workspaces:
 
             try:
-                channel_class = create_channel_class()
-                channel = channel_class(workspace_id)
+                channel = TcpChannel(workspace_id)
             except FileNotFoundError:
                 raise RuntimeError("No server found. Is it running?") from None
 

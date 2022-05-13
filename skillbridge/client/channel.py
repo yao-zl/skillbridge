@@ -1,4 +1,4 @@
-from socket import socket, SOCK_STREAM, AF_INET
+from socket import socket, SOCK_STREAM, AF_INET, AF_UNIX
 from select import select
 from typing import Iterable, Union, Any, Type, TextIO
 from sys import platform
@@ -76,11 +76,19 @@ class TcpChannel(Channel):
 
         self.connected = False
         self.address = self.create_address(address)
+        if type(self.address) is str:
+            self.address_family = AF_UNIX
         self.socket = self.start()
 
     @staticmethod
     def create_address(id_: Any) -> Any:
-        raise NotImplementedError
+        id_ = 'default' if id_ is None else id_
+        if type(id_) is int:
+            return 'localhost', id_
+        elif platform == 'win32':
+            raise ValueError("UNIX Socket is not possible on Windows")
+        else:
+            return f'/tmp/skill-server-{id_}.sock'
 
     def start(self) -> socket:
         sock = self.create_socket()
@@ -91,7 +99,13 @@ class TcpChannel(Channel):
         return socket(self.address_family, self.socket_kind)
 
     def configure(self, _: socket) -> None:
-        pass
+        if type(self.address) is tuple:
+            try:
+                from socket import SIO_LOOPBACK_FAST_PATH  # type: ignore
+                sock.ioctl(SIO_LOOPBACK_FAST_PATH, True)  # type: ignore
+            except ImportError:
+                pass
+
 
     def connect(self, sock: socket) -> socket:
         sock.settimeout(1)
@@ -179,37 +193,3 @@ class TcpChannel(Channel):
             else:
                 break
 
-
-if platform == 'win32':
-
-    def create_channel_class() -> Type[TcpChannel]:
-        class WindowsChannel(TcpChannel):
-            def configure(self, sock: socket) -> None:
-                try:
-                    from socket import SIO_LOOPBACK_FAST_PATH  # type: ignore
-
-                    sock.ioctl(SIO_LOOPBACK_FAST_PATH, True)  # type: ignore
-                except ImportError:
-                    pass
-
-            @staticmethod
-            def create_address(id_: Any) -> Any:
-                port = 7777 if id_ is None else id_
-                return 'localhost', port
-
-        return WindowsChannel
-
-else:
-
-    def create_channel_class() -> Type[TcpChannel]:
-        from socket import AF_UNIX
-
-        class UnixChannel(TcpChannel):
-            address_family = AF_UNIX
-
-            @staticmethod
-            def create_address(id_: Any) -> Any:
-                id_ = 'default' if id_ is None else id_
-                return f'/tmp/skill-server-{id_}.sock'
-
-        return UnixChannel
