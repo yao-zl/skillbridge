@@ -1,4 +1,4 @@
-from socket import socket, SOCK_STREAM, AF_INET, AF_UNIX
+from socket import socket, SOCK_STREAM, AF_INET
 from select import select
 from typing import Iterable, Union, Any, Type, TextIO
 from sys import platform
@@ -77,6 +77,7 @@ class TcpChannel(Channel):
         self.connected = False
         self.address = self.create_address(address)
         if type(self.address) is str:
+            from socket import AF_UNIX
             self.address_family = AF_UNIX
         self.socket = self.start()
 
@@ -98,14 +99,13 @@ class TcpChannel(Channel):
     def create_socket(self) -> socket:
         return socket(self.address_family, self.socket_kind)
 
-    def configure(self, _: socket) -> None:
+    def configure(self, sock: socket) -> None:
         if type(self.address) is tuple:
             try:
                 from socket import SIO_LOOPBACK_FAST_PATH  # type: ignore
                 sock.ioctl(SIO_LOOPBACK_FAST_PATH, True)  # type: ignore
             except ImportError:
                 pass
-
 
     def connect(self, sock: socket) -> socket:
         sock.settimeout(1)
