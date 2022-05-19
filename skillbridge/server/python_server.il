@@ -175,14 +175,17 @@ let((_filename _baseName _moduleFolder _logName _executable)
     )
 
     putd('pyStartServer nil)
-    defun(pyStartServer (@key (id "default") (logLevel "WARNING") (singleMode nil) (timeout nil) (python "python") "ttggt")
+    defun(pyStartServer (@key (id "default") (logLevel "WARNING") (singleMode nil) (tokenMode nil) (timeout nil) (python "python") "ttgggt")
         if(pyStartServer.ipc then
             fprintf(stderr, "server is already running\n")
             nil
         else
             let(((executableWithArgs sprintf(nil "%s %L %s" pyStartServer.exe id logLevel)))
                 if(singleMode then
-                    executableWithArgs = strcat(executableWithArgs "--single")
+                    executableWithArgs = strcat(executableWithArgs " --single")
+                )
+                if(tokenMode then
+                    executableWithArgs = strcat(executableWithArgs " --token")
                 )
                 if(timeout then
                     executableWithArgs = sprintf(nil "%s --timeout %L" executableWithArgs timeout)
@@ -207,7 +210,7 @@ let((_filename _baseName _moduleFolder _logName _executable)
     pyStartServer.exe = _executable
 
     printf("Available commands:\n")
-    printf("\tpyStartServer ?id \"default\" ?logLevel \"WARNING\" ?singleMode nil ?timeout nil ?python \"python\"\n")
+    printf("\tpyStartServer ?id \"default\" ?logLevel \"WARNING\" ?singleMode nil ?tokenMode nil ?timeout nil ?python \"python\"\n")
     printf("\tpyKillServer\n")
     printf("\tpyReloadScript\n")
     printf("\tpyShowLog [numberOfLines]\n")

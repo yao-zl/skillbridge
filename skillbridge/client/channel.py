@@ -44,6 +44,11 @@ class Channel:
                     "Timeout: you should restart the skill server and "
                     "increase the timeout `pyStartServer ?timeout X`."
                 )
+            elif response == '<token>':
+                raise RuntimeError(
+                    "Token: The server has enabled token authentication, "
+                    "please provide the token when opening the workspace."
+                )
             raise RuntimeError(response)
         return response
 
@@ -71,15 +76,17 @@ class TcpChannel(Channel):
     address_family = AF_INET
     socket_kind = SOCK_STREAM
 
-    def __init__(self, address: Any):
+    def __init__(self, address: Any, token: Any):
         super().__init__(1_000_000)
 
+        self.token = token
         self.connected = False
         self.address = self.create_address(address)
         if type(self.address) is str:
             from socket import AF_UNIX
             self.address_family = AF_UNIX
         self.socket = self.start()
+        self._verify_token()
 
     @staticmethod
     def create_address(id_: Any) -> Any:
@@ -117,6 +124,16 @@ class TcpChannel(Channel):
     def reconnect(self) -> None:
         self.socket.close()
         self.socket = self.start()
+        self._verify_token()
+
+    def _verify_token(self):
+        if not self.token:
+            return True
+        try:
+            result = self.send(self.token)
+        except Exception as e:
+            print(e)
+            self.connected = False
 
     def _receive_all(self, remaining: int) -> Iterable[bytes]:
         while remaining:
@@ -136,15 +153,19 @@ class TcpChannel(Channel):
 
         try:
             self.socket.sendall(length)
-        except (BrokenPipeError, OSError):
-            print("attempting to reconnect")
+        except (BrokenPipeError, OSError) as e:
+            if self.token:
+                raise e
+            print("attempting to reconnect 1")
             self.reconnect()
             self.socket.sendall(length)
 
         try:
             self.socket.sendall(byte)
-        except (BrokenPipeError, OSError):
-            print("attempting to reconnect")
+        except (BrokenPipeError, OSError) as e:
+            if self.token:
+                raise e
+            print("attempting to reconnect 2")
             self.reconnect()
             self.socket.sendall(length)
             self.socket.sendall(byte)

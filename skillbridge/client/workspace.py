@@ -224,17 +224,21 @@ class Workspace:
             ip.Completer.greedy = True
 
     @classmethod
-    def open(cls, workspace_id: WorkspaceId = None, direct: bool = False) -> 'Workspace':
+    def open(cls, workspace_id: WorkspaceId = None, direct: bool = False, token = None) -> 'Workspace':
         if direct and not sys.stdin.isatty():
             stdout = sys.stdout
             sys.stdout = sys.stderr
 
             return Workspace(DirectChannel(stdout), workspace_id)
 
+        if workspace_id in _open_workspaces:
+            if _open_workspaces[workspace_id]._channel.token:
+                _open_workspaces[workspace_id].close()
+
         if workspace_id not in _open_workspaces:
 
             try:
-                channel = TcpChannel(workspace_id)
+                channel = TcpChannel(workspace_id, token)
             except FileNotFoundError:
                 raise RuntimeError("No server found. Is it running?") from None
 
@@ -248,6 +252,9 @@ class Workspace:
         if current_workspace.id == self.id:
             current_workspace.__class__ = _NoWorkspace  # type: ignore
             current_workspace.__dict__ = {}
+
+    def set_token(self, token) -> None:
+        self._channel.token = token
 
     @property
     def max_transmission_length(self) -> int:
