@@ -253,8 +253,14 @@ class Workspace:
             current_workspace.__class__ = _NoWorkspace  # type: ignore
             current_workspace.__dict__ = {}
 
-    def set_token(self, token) -> None:
+    @property
+    def token(self) -> str:
+        return self._channel.token
+
+    @token.setter
+    def token(self, token: str) -> None:
         self._channel.token = token
+        self._channel.reconnect()
 
     @property
     def max_transmission_length(self) -> int:

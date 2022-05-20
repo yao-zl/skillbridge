@@ -5,8 +5,9 @@ from sys import platform
 
 
 class Channel:
-    def __init__(self, max_transmission_length: int):
+    def __init__(self, max_transmission_length: int, token: str):
         self._max_transmission_length = max_transmission_length
+        self._token = token
 
     def send(self, data: str) -> str:
         raise NotImplementedError
@@ -19,6 +20,14 @@ class Channel:
 
     def try_repair(self) -> Any:
         raise NotImplementedError
+
+    @property
+    def token(self) -> str:
+        return self._token
+
+    @token.setter
+    def token(self, token: str) -> None:
+        self._token = token
 
     @property
     def max_transmission_length(self) -> int:
@@ -47,7 +56,7 @@ class Channel:
             elif response == '<token>':
                 raise RuntimeError(
                     "Token: The server has enabled token authentication, "
-                    "please provide the token when opening the workspace."
+                    "please provide the correct token when opening/reconnect the channel."
                 )
             raise RuntimeError(response)
         return response
@@ -55,7 +64,7 @@ class Channel:
 
 class DirectChannel(Channel):
     def __init__(self, stdout: TextIO):
-        super().__init__(10_000)
+        super().__init__(10_000, None)
         self.stdout = stdout
 
     def send(self, data: str) -> str:
@@ -77,9 +86,8 @@ class TcpChannel(Channel):
     socket_kind = SOCK_STREAM
 
     def __init__(self, address: Any, token: Any):
-        super().__init__(1_000_000)
+        super().__init__(1_000_000, token)
 
-        self.token = token
         self.connected = False
         self.address = self.create_address(address)
         if type(self.address) is str:
@@ -132,8 +140,9 @@ class TcpChannel(Channel):
         try:
             result = self.send(self.token)
         except Exception as e:
-            print(e)
+            self.socket.close()
             self.connected = False
+            raise e
 
     def _receive_all(self, remaining: int) -> Iterable[bytes]:
         while remaining:
@@ -155,8 +164,10 @@ class TcpChannel(Channel):
             self.socket.sendall(length)
         except (BrokenPipeError, OSError) as e:
             if self.token:
-                raise e
-            print("attempting to reconnect 1")
+                raise RuntimeError(
+                 "The connection is lost, please update the token and reconnect."
+                ) from e
+            print("attempting to reconnect")
             self.reconnect()
             self.socket.sendall(length)
 
@@ -164,8 +175,10 @@ class TcpChannel(Channel):
             self.socket.sendall(byte)
         except (BrokenPipeError, OSError) as e:
             if self.token:
-                raise e
-            print("attempting to reconnect 2")
+                raise RuntimeError(
+                 "The connection is lost, please update the token and reconnect."
+                ) from e
+            print("attempting to reconnect")
             self.reconnect()
             self.socket.sendall(length)
             self.socket.sendall(byte)
