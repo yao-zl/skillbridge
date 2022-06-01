@@ -12,13 +12,13 @@ def print_skill_script_location() -> None:
     skill_source = join(folder, 'server', 'python_server.il')
     escaped = repr(skill_source)[1:-1]
 
-    print("Path to Skill server script:")
+    #print("Path to Skill server script:")
     print(escaped)
 
-    print()
+    #print()
 
-    print("Type this into the Skill console:")
-    print(f'load("{escaped}")')
+    #print("Type this into the Skill console:")
+    #print(f'load("{escaped}")')
 
 
 def deprecated_command() -> None:

@@ -209,11 +209,13 @@ let((_filename _baseName _moduleFolder _logName _executable)
     pyStartServer.ipc = nil
     pyStartServer.exe = _executable
 
-    printf("Available commands:\n")
-    printf("\tpyStartServer ?id \"default\" ?logLevel \"WARNING\" ?singleMode nil ?tokenMode nil ?timeout nil ?python \"python\"\n")
-    printf("\tpyKillServer\n")
-    printf("\tpyReloadScript\n")
-    printf("\tpyShowLog [numberOfLines]\n")
-    printf("\tpyDumpFunctionDefinitions filename\n")
-    printf("\tpyRunScript path ?args list() ?python \"python\"\n")
+    if( nil then
+        printf("Available commands:\n")
+        printf("\tpyStartServer ?id \"default\" ?logLevel \"WARNING\" ?singleMode nil ?tokenMode nil ?timeout nil ?python \"python\"\n")
+        printf("\tpyKillServer\n")
+        printf("\tpyReloadScript\n")
+        printf("\tpyShowLog [numberOfLines]\n")
+        printf("\tpyDumpFunctionDefinitions filename\n")
+        printf("\tpyRunScript path ?args list() ?python \"python\"\n")
+    )
 )
